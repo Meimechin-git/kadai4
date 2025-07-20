@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3次元描画の原理</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for better readability */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light gray background */
+            color: #334155; /* Dark slate gray text */
+        }
+        canvas {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e0; /* Light gray border */
+            border-radius: 0.5rem; /* Rounded corners */
+            display: block; /* Ensure it takes full width of its container */
+            width: 100%; /* Make canvas responsive */
+            height: 400px; /* Fixed height for consistency */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl w-full bg-white shadow-xl rounded-xl p-8 sm:p-10 lg:p-12">
+        <!-- Page Title -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-700 mb-4 rounded-lg p-2">
+                3次元描画の原理
+            </h1>
+            <p class="text-lg sm:text-xl text-gray-600">
+                3Dグラフィックスにおける点の描画の基礎を学びましょう。
+            </p>
+        </header>
+
+        <!-- Content Sections -->
+        <main class="space-y-12">
+            <!-- Section 1: 相対座標上の点の描画 -->
+            <section class="bg-blue-50 p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                <h2 class="text-2xl sm:text-3xl font-bold text-blue-800 mb-4">
+                    1. 相対座標と3D点描画の基礎
+                </h2>
+                <p class="text-gray-700 leading-relaxed mb-6">
+                    3Dグラフィックスでは、オブジェクトは「ローカル座標系」で定義されます。これは、オブジェクト自身の中心を基準とした座標です。
+                    <br><br>
+                    2D描画ではX軸とY軸を使いますが、3Dでは奥行きを表すZ軸が加わります。3Dの点を2Dスクリーンに描画する際は、「透視投影」という方法を使います。これは、遠くのものは小さく、近くのものは大きく見えるという人間の視覚を真似るものです。
+                    <br><br>
+                    透視投影の基本的な考え方は、点のX座標とY座標をZ座標で割ることです。これにより、画面上の dx 軸と dy 軸の座標が求められます。つまり、dx = X/Z、dy = Y/Z となります。Z値が大きい（遠い）点ほど、画面の中心に近づいて表示されます。
+                    <br><br>
+                    これらの dx, dy 座標は、最終的に -1 から 1 の範囲に正規化され、画面のピクセル座標に合うように調整されて描画されます。
+                    <br><br>
+                    以下のキャンバスで、X、Y、Zの値を変更して点の位置を確認してください。Z座標を大きくすると、点が画面の中心に近づき、小さく表示されることがわかります。
+                </p>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+                    <div class="flex items-center space-x-2">
+                        <label for="coordX" class="font-medium text-gray-700">X:</label>
+                        <input type="number" id="coordX" value="50" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="coordY" class="font-medium text-gray-700">Y:</label>
+                        <input type="number" id="coordY" value="30" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="coordZ" class="font-medium text-gray-700">Z:</label>
+                        <input type="number" id="coordZ" value="100" min="0.1" step="1" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <button id="drawPointBtn" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                        点を描画
+                    </button>
+                </div>
+
+                <canvas id="relativeCoordCanvas"></canvas>
+            </section>
+
+            <!-- Section 2: 視線の移動 -->
+            <section class="bg-green-50 p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                <h2 class="text-2xl sm:text-3xl font-bold text-green-800 mb-4">
+                    2. 視線の平行移動
+                </h2>
+                <p class="text-gray-700 leading-relaxed mb-6">
+                    3D空間では、視点（カメラ）の位置を移動させることができます。これを「平行移動」と呼びます。視点が移動すると、同じ3D空間にある点でも、視点から見た相対的な位置が変わるため、画面上での見え方も変化します。
+                    <br><br>
+                    例えば、視点が右に移動すると、物体は相対的に左に移動して見えます。このセクションでは、点の「ワールド座標」（絶対的な位置）と視点の「ワールド座標」を入力し、視点の移動が点の見え方にどう影響するかを視覚的に確認できます。
+                    <br><br>
+                    画面に描画されるのは、常に視点から見た点の相対的な位置に基づいています。
+                    <br><br>
+                    点のワールド座標を (Px, Py, Pz)、視点のワールド座標を (Cx, Cy, Cz) とすると、視点から見た点の相対座標 (Vx, Vy, Vz) は以下の計算で求められます。
+                    <br>
+                    Vx = Px - Cx
+                    <br>
+                    Vy = Py - Cy
+                    <br>
+                    Vz = Pz - Cz
+                    <br><br>
+                    この相対座標 (Vx, Vy, Vz) に対して透視投影が行われます。
+                </p>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4 flex-wrap">
+                    <div class="flex items-center space-x-2">
+                        <label for="pointWorldX" class="font-medium text-gray-700">点X:</label>
+                        <input type="number" id="pointWorldX" value="50" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="pointWorldY" class="font-medium text-gray-700">点Y:</label>
+                        <input type="number" id="pointWorldY" value="30" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="pointWorldZ" class="font-medium text-gray-700">点Z:</label>
+                        <input type="number" id="pointWorldZ" value="100" min="0.1" step="1" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4 flex-wrap">
+                    <div class="flex items-center space-x-2">
+                        <label for="cameraWorldX" class="font-medium text-gray-700">視点X:</label>
+                        <input type="number" id="cameraWorldX" value="0" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="cameraWorldY" class="font-medium text-gray-700">視点Y:</label>
+                        <input type="number" id="cameraWorldY" value="0" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="cameraWorldZ" class="font-medium text-gray-700">視点Z:</label>
+                        <input type="number" id="cameraWorldZ" value="0" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                    </div>
+                </div>
+                <div class="flex justify-center mt-4 mb-6">
+                    <button id="drawViewTranslationBtn" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                        点を描画
+                    </button>
+                </div>
+
+                <canvas id="viewTranslationCanvas"></canvas>
+            </section>
+
+            <!-- Section 3: 視線の回転 -->
+            <section class="bg-purple-50 p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+                <h2 class="text-2xl sm:text-3xl font-bold text-purple-800 mb-4">
+                    3. 視線の回転
+                </h2>
+                <p class="text-gray-700 leading-relaxed mb-6">
+                    視点（カメラ）は、3D空間内で位置を移動させるだけでなく、向きを変える（回転させる）こともできます。視線が回転すると、同じ3D空間にある点でも、異なる角度から見ることになるため、画面上での見え方が大きく変化します。
+                    <br><br>
+                    ここでは、Z軸（ロール）とX軸（ピッチ）周りの回転を試します。X軸とZ軸の角度を調整して、点がどのように動いて見えるかを確認してください。
+                    <br><br>
+                    画面に描画されるのは、常に回転後の視点から見た点の相対的な位置に基づいています。
+                    <br><br>
+                    点の座標 (x, y, z) を視点の回転に合わせて変換するには、逆の回転行列を適用します。
+                    <br><br>
+                    Z軸周りの回転 (角度 theta_z):
+                    <br>
+                    x' = x * cos(theta_z) - y * sin(theta_z)
+                    <br>
+                    y' = x * sin(theta_z) + y * cos(theta_z)
+                    <br>
+                    z' = z
+                    <br><br>
+                    X軸周りの回転 (角度 theta_x):
+                    <br>
+                    x'' = x'
+                    <br>
+                    y'' = y' * cos(theta_x) - z' * sin(theta_x)
+                    <br>
+                    z'' = y' * sin(theta_x) + z' * cos(theta_x)
+                    <br><br>
+                    これらの計算により、視点が回転したときに点がどのように見えるかの相対座標 (x'', y'', z'') が得られます。
+                </p>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4 flex-wrap">
+                    <div class="flex items-center space-x-2">
+                        <label for="pointRotationX" class="font-medium text-gray-700">点X:</label>
+                        <input type="number" id="pointRotationX" value="50" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="pointRotationY" class="font-medium text-gray-700">点Y:</label>
+                        <input type="number" id="pointRotationY" value="30" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="pointRotationZ" class="font-medium text-gray-700">点Z:</label>
+                        <input type="number" id="pointRotationZ" value="100" min="0.1" step="1" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4 flex-wrap">
+                    <div class="flex items-center space-x-2">
+                        <label for="cameraRotationX" class="font-medium text-gray-700">視点X回転 (度):</label>
+                        <input type="number" id="cameraRotationX" value="0" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="cameraRotationZ" class="font-medium text-gray-700">視点Z回転 (度):</label>
+                        <input type="number" id="cameraRotationZ" value="0" class="w-24 p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                </div>
+                <div class="flex justify-center mt-4 mb-6">
+                    <button id="drawViewRotationBtn" class="px-6 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                        点を描画
+                    </button>
+                </div>
+
+                <canvas id="viewRotationCanvas"></canvas>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // --- Section 1: Relative Coordinate Drawing ---
+        const canvas1 = document.getElementById('relativeCoordCanvas');
+        const ctx1 = canvas1.getContext('2d');
+        const coordXInput = document.getElementById('coordX');
+        const coordYInput = document.getElementById('coordY');
+        const coordZInput = document.getElementById('coordZ');
+        const drawPointBtn = document.getElementById('drawPointBtn');
+
+        function drawCoordinateSystemAndPoint(pointX, pointY, pointZ) {
+            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+            const clampedPointZ = Math.max(pointZ, 0.1);
+            const centerX = canvas1.width / 2;
+            const centerY = canvas1.height / 2;
+
+            // Draw dx-axis
+            ctx1.beginPath();
+            ctx1.moveTo(0, centerY);
+            ctx1.lineTo(canvas1.width, centerY);
+            ctx1.strokeStyle = '#94a3b8';
+            ctx1.lineWidth = 1;
+            ctx1.stroke();
+            ctx1.fillText('dx軸', canvas1.width - 30, centerY - 10);
+
+            // Draw dy-axis
+            ctx1.beginPath();
+            ctx1.moveTo(centerX, 0);
+            ctx1.lineTo(centerX, canvas1.height);
+            ctx1.strokeStyle = '#94a3b8';
+            ctx1.lineWidth = 1;
+            ctx1.stroke();
+            ctx1.fillText('dy軸', centerX + 10, 20);
+
+            // Draw origin (0,0)
+            ctx1.beginPath();
+            ctx1.arc(centerX, centerY, 3, 0, Math.PI * 2);
+            ctx1.fillStyle = '#1e293b';
+            ctx1.fill();
+            ctx1.fillText('(0,0)', centerX + 5, centerY + 15);
+
+            const scaleFactor = 200;
+            const dx = (pointX / clampedPointZ) * scaleFactor / (canvas1.width / 2);
+            const dy = (pointY / clampedPointZ) * scaleFactor / (canvas1.height / 2);
+
+            const displayX = (dx + 1) / 2 * canvas1.width;
+            const displayY = (1 - dy) / 2 * canvas1.height;
+
+            const basePointSize = 10;
+            const maxPointSize = 30;
+            const calculatedPointSize = basePointSize * (100 / clampedPointZ);
+            const pointSize = Math.max(2, Math.min(calculatedPointSize, maxPointSize));
+
+            ctx1.beginPath();
+            ctx1.arc(displayX, displayY, pointSize, 0, Math.PI * 2);
+            ctx1.fillStyle = '#ef4444';
+            ctx1.fill();
+
+            ctx1.beginPath();
+            ctx1.moveTo(centerX, centerY);
+            ctx1.lineTo(displayX, displayY);
+            ctx1.strokeStyle = '#2563eb';
+            ctx1.lineWidth = 1.5;
+            ctx1.setLineDash([5, 5]);
+            ctx1.stroke();
+            ctx1.setLineDash([]);
+
+            ctx1.fillStyle = '#1e293b';
+            ctx1.fillText(`(${pointX}, ${pointY}, ${pointZ})`, displayX + 10, displayY - 20);
+            ctx1.fillText(`NDC: (${dx.toFixed(2)}, ${dy.toFixed(2)})`, displayX + 10, displayY);
+        }
+
+        function initializeCanvas1() {
+            const rect = canvas1.getBoundingClientRect();
+            canvas1.width = rect.width;
+            canvas1.height = 400;
+            const initialX = parseFloat(coordXInput.value);
+            const initialY = parseFloat(coordYInput.value);
+            const initialZ = Math.max(parseFloat(coordZInput.value), parseFloat(coordZInput.min));
+            coordZInput.value = initialZ;
+            drawCoordinateSystemAndPoint(initialX, initialY, initialZ);
+        }
+
+        drawPointBtn.addEventListener('click', () => {
+            const x = parseFloat(coordXInput.value);
+            const y = parseFloat(coordYInput.value);
+            let z = parseFloat(coordZInput.value);
+            z = Math.max(z, parseFloat(coordZInput.min));
+            coordZInput.value = z;
+            if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+                drawCoordinateSystemAndPoint(x, y, z);
+            } else {
+                console.error("Invalid input for coordinates in Section 1.");
+            }
+        });
+
+        // --- Section 2: View Translation Drawing ---
+        const canvas2 = document.getElementById('viewTranslationCanvas');
+        const ctx2 = canvas2.getContext('2d');
+        const pointWorldXInput = document.getElementById('pointWorldX');
+        const pointWorldYInput = document.getElementById('pointWorldY');
+        const pointWorldZInput = document.getElementById('pointWorldZ');
+        const cameraWorldXInput = document.getElementById('cameraWorldX');
+        const cameraWorldYInput = document.getElementById('cameraWorldY');
+        const cameraWorldZInput = document.getElementById('cameraWorldZ');
+        const drawViewTranslationBtn = document.getElementById('drawViewTranslationBtn');
+
+        function drawViewTranslation(pointWorldX, pointWorldY, pointWorldZ, cameraWorldX, cameraWorldY, cameraWorldZ) {
+            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+
+            // Calculate point coordinates relative to the camera (view space)
+            const viewX = pointWorldX - cameraWorldX;
+            const viewY = pointWorldY - cameraWorldY;
+            const viewZ = pointWorldZ - cameraWorldZ;
+
+            // Ensure viewZ is always positive to avoid division by zero or negative perspective
+            const clampedViewZ = Math.max(viewZ, 0.1); // Clamp viewZ to a minimum positive value
+
+            const centerX = canvas2.width / 2;
+            const centerY = canvas2.height / 2;
+
+            // Draw dx-axis
+            ctx2.beginPath();
+            ctx2.moveTo(0, centerY);
+            ctx2.lineTo(canvas2.width, centerY);
+            ctx2.strokeStyle = '#94a3b8';
+            ctx2.lineWidth = 1;
+            ctx2.stroke();
+            ctx2.fillText('dx軸', canvas2.width - 30, centerY - 10);
+
+            // Draw dy-axis
+            ctx2.beginPath();
+            ctx2.moveTo(centerX, 0);
+            ctx2.lineTo(centerX, canvas2.height);
+            ctx2.strokeStyle = '#94a3b8';
+            ctx2.lineWidth = 1;
+            ctx2.stroke();
+            ctx2.fillText('dy軸', centerX + 10, 20);
+
+            // Draw origin (0,0)
+            ctx2.beginPath();
+            ctx2.arc(centerX, centerY, 3, 0, Math.PI * 2);
+            ctx2.fillStyle = '#1e293b';
+            ctx2.fill();
+            ctx2.fillText('(0,0)', centerX + 5, centerY + 15);
+
+            // --- Perspective Projection and Normalization to [-1, 1] range ---
+            const scaleFactor = 200; // Adjust this value to change the "zoom" or effective field of view
+
+            const dx = (viewX / clampedViewZ) * scaleFactor / (canvas2.width / 2);
+            const dy = (viewY / clampedViewZ) * scaleFactor / (canvas2.height / 2);
+
+            const displayX = (dx + 1) / 2 * canvas2.width;
+            const displayY = (1 - dy) / 2 * canvas2.height;
+
+            const basePointSize = 10;
+            const maxPointSize = 30;
+            const calculatedPointSize = basePointSize * (100 / clampedViewZ);
+            const pointSize = Math.max(2, Math.min(calculatedPointSize, maxPointSize));
+
+            ctx2.beginPath();
+            ctx2.arc(displayX, displayY, pointSize, 0, Math.PI * 2);
+            ctx2.fillStyle = '#ef4444';
+            ctx2.fill();
+
+            ctx2.beginPath();
+            ctx2.moveTo(centerX, centerY);
+            ctx2.lineTo(displayX, displayY);
+            ctx2.strokeStyle = '#2563eb';
+            ctx2.lineWidth = 1.5;
+            ctx2.setLineDash([5, 5]);
+            ctx2.stroke();
+            ctx2.setLineDash([]);
+
+            ctx2.fillStyle = '#1e293b';
+            ctx2.fillText(`点: (${pointWorldX}, ${pointWorldY}, ${pointWorldZ})`, displayX + 10, displayY - 20);
+            ctx2.fillText(`視点: (${cameraWorldX}, ${cameraWorldY}, ${cameraWorldZ})`, displayX + 10, displayY);
+            ctx2.fillText(`NDC: (${dx.toFixed(2)}, ${dy.toFixed(2)})`, displayX + 10, displayY + 20);
+        }
+
+        function initializeCanvas2() {
+            const rect = canvas2.getBoundingClientRect();
+            canvas2.width = rect.width;
+            canvas2.height = 400;
+            const initialPointX = parseFloat(pointWorldXInput.value);
+            const initialPointY = parseFloat(pointWorldYInput.value);
+            const initialPointZ = Math.max(parseFloat(pointWorldZInput.value), parseFloat(pointWorldZInput.min));
+            pointWorldZInput.value = initialPointZ;
+            const initialCameraX = parseFloat(cameraWorldXInput.value);
+            const initialCameraY = parseFloat(cameraWorldYInput.value);
+            const initialCameraZ = parseFloat(cameraWorldZInput.value);
+            drawViewTranslation(initialPointX, initialPointY, initialPointZ, initialCameraX, initialCameraY, initialCameraZ);
+        }
+
+        drawViewTranslationBtn.addEventListener('click', () => {
+            const x = parseFloat(pointWorldXInput.value);
+            const y = parseFloat(pointWorldYInput.value);
+            let z = parseFloat(pointWorldZInput.value);
+            z = Math.max(z, parseFloat(pointWorldZInput.min));
+            pointWorldZInput.value = z;
+
+            const cameraX = parseFloat(cameraWorldXInput.value);
+            const cameraY = parseFloat(cameraWorldYInput.value);
+            const cameraZ = parseFloat(cameraWorldZInput.value);
+
+            if (!isNaN(x) && !isNaN(y) && !isNaN(z) &&
+                !isNaN(cameraX) && !isNaN(cameraY) && !isNaN(cameraZ)) {
+                drawViewTranslation(x, y, z, cameraX, cameraY, cameraZ);
+            } else {
+                console.error("Invalid input for coordinates in Section 2.");
+            }
+        });
+
+        // --- Section 3: View Rotation Drawing ---
+        const canvas3 = document.getElementById('viewRotationCanvas');
+        const ctx3 = canvas3.getContext('2d');
+        const pointRotationXInput = document.getElementById('pointRotationX');
+        const pointRotationYInput = document.getElementById('pointRotationY');
+        const pointRotationZInput = document.getElementById('pointRotationZ');
+        const cameraRotationXInput = document.getElementById('cameraRotationX');
+        const cameraRotationZInput = document.getElementById('cameraRotationZ');
+        const drawViewRotationBtn = document.getElementById('drawViewRotationBtn');
+
+        function drawViewRotation(pointWorldX, pointWorldY, pointWorldZ, camRotXDeg, camRotZDeg) {
+            ctx3.clearRect(0, 0, canvas3.width, canvas3.height);
+
+            // For simplicity in this demo, assume camera is at origin (0,0,0) for rotation
+            // and point coordinates are relative to this origin.
+            // In a real 3D engine, rotation would be applied after translation to view space.
+            let viewX = pointWorldX;
+            let viewY = pointWorldY;
+            let viewZ = pointWorldZ;
+
+            // Convert degrees to radians
+            const camRotXRad = camRotXDeg * Math.PI / 180;
+            const camRotZRad = camRotZDeg * Math.PI / 180;
+
+            // Apply inverse Z-axis rotation (roll) to the point
+            // This simulates rotating the camera around its Z-axis
+            let tempX = viewX * Math.cos(-camRotZRad) - viewY * Math.sin(-camRotZRad);
+            let tempY = viewX * Math.sin(-camRotZRad) + viewY * Math.cos(-camRotZRad);
+            let tempZ = viewZ; // Z is unchanged by Z-axis rotation
+
+            // Apply inverse X-axis rotation (pitch) to the point
+            // This simulates rotating the camera around its X-axis
+            let rotatedX = tempX;
+            let rotatedY = tempY * Math.cos(-camRotXRad) - tempZ * Math.sin(-camRotXRad);
+            let rotatedZ = tempY * Math.sin(-camRotXRad) + tempZ * Math.cos(-camRotXRad);
+
+            // Ensure rotatedZ (new effective Z for projection) is always positive
+            const clampedRotatedZ = Math.max(rotatedZ, 0.1);
+
+            const centerX = canvas3.width / 2;
+            const centerY = canvas3.height / 2;
+
+            // Draw dx-axis
+            ctx3.beginPath();
+            ctx3.moveTo(0, centerY);
+            ctx3.lineTo(canvas3.width, centerY);
+            ctx3.strokeStyle = '#94a3b8';
+            ctx3.lineWidth = 1;
+            ctx3.stroke();
+            ctx3.fillText('dx軸', canvas3.width - 30, centerY - 10);
+
+            // Draw dy-axis
+            ctx3.beginPath();
+            ctx3.moveTo(centerX, 0);
+            ctx3.lineTo(centerX, canvas3.height);
+            ctx3.strokeStyle = '#94a3b8';
+            ctx3.lineWidth = 1;
+            ctx3.stroke();
+            ctx3.fillText('dy軸', centerX + 10, 20);
+
+            // Draw origin (0,0)
+            ctx3.beginPath();
+            ctx3.arc(centerX, centerY, 3, 0, Math.PI * 2);
+            ctx3.fillStyle = '#1e293b';
+            ctx3.fill();
+            ctx3.fillText('(0,0)', centerX + 5, centerY + 15);
+
+            // --- Perspective Projection and Normalization to [-1, 1] range ---
+            const scaleFactor = 200;
+
+            const dx = (rotatedX / clampedRotatedZ) * scaleFactor / (canvas3.width / 2);
+            const dy = (rotatedY / clampedRotatedZ) * scaleFactor / (canvas3.height / 2);
+
+            const displayX = (dx + 1) / 2 * canvas3.width;
+            const displayY = (1 - dy) / 2 * canvas3.height;
+
+            const basePointSize = 10;
+            const maxPointSize = 30;
+            const calculatedPointSize = basePointSize * (100 / clampedRotatedZ);
+            const pointSize = Math.max(2, Math.min(calculatedPointSize, maxPointSize));
+
+            ctx3.beginPath();
+            ctx3.arc(displayX, displayY, pointSize, 0, Math.PI * 2);
+            ctx3.fillStyle = '#ef4444';
+            ctx3.fill();
+
+            ctx3.beginPath();
+            ctx3.moveTo(centerX, centerY);
+            ctx3.lineTo(displayX, displayY);
+            ctx3.strokeStyle = '#2563eb';
+            ctx3.lineWidth = 1.5;
+            ctx3.setLineDash([5, 5]);
+            ctx3.stroke();
+            ctx3.setLineDash([]);
+
+            ctx3.fillStyle = '#1e293b';
+            ctx3.fillText(`点: (${pointWorldX}, ${pointWorldY}, ${pointWorldZ})`, displayX + 10, displayY - 20);
+            ctx3.fillText(`視点回転: X=${camRotXDeg}°, Z=${camRotZDeg}°`, displayX + 10, displayY);
+            ctx3.fillText(`NDC: (${dx.toFixed(2)}, ${dy.toFixed(2)})`, displayX + 10, displayY + 20);
+        }
+
+        function initializeCanvas3() {
+            const rect = canvas3.getBoundingClientRect();
+            canvas3.width = rect.width;
+            canvas3.height = 400;
+            const initialPointX = parseFloat(pointRotationXInput.value);
+            const initialPointY = parseFloat(pointRotationYInput.value);
+            const initialPointZ = Math.max(parseFloat(pointRotationZInput.value), parseFloat(pointRotationZInput.min));
+            pointRotationZInput.value = initialPointZ;
+            // Changed initial X rotation to 0
+            const initialCamRotX = 0; // Changed from -90
+            cameraRotationXInput.value = initialCamRotX; // Update input field
+            const initialCamRotZ = parseFloat(cameraRotationZInput.value);
+            drawViewRotation(initialPointX, initialPointY, initialPointZ, initialCamRotX, initialCamRotZ);
+        }
+
+        drawViewRotationBtn.addEventListener('click', () => {
+            const x = parseFloat(pointRotationXInput.value);
+            const y = parseFloat(pointRotationYInput.value);
+            let z = parseFloat(pointRotationZInput.value);
+            z = Math.max(z, parseFloat(pointRotationZInput.min));
+            pointRotationZInput.value = z;
+
+            const camRotX = parseFloat(cameraRotationXInput.value);
+            const camRotZ = parseFloat(cameraRotationZInput.value);
+
+            if (!isNaN(x) && !isNaN(y) && !isNaN(z) &&
+                !isNaN(camRotX) && !isNaN(camRotZ)) {
+                drawViewRotation(x, y, z, camRotX, camRotZ);
+            } else {
+                console.error("Invalid input for coordinates or rotations in Section 3.");
+            }
+        });
+
+        // Initialize all canvases on window load and resize
+        window.onload = () => {
+            initializeCanvas1();
+            initializeCanvas2();
+            initializeCanvas3(); // Re-add initialization for canvas3
+        };
+
+        window.addEventListener('resize', () => {
+            initializeCanvas1();
+            initializeCanvas2();
+            initializeCanvas3(); // Re-add initialization for canvas3
+        });
+    </script>
+</body>
+</html>
